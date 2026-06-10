@@ -1,0 +1,625 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>週間献立プランナー</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#ffffff;--bg2:#f7f7f5;--bg3:#f0efec;
+  --text:#1a1a18;--text2:#6b6b67;--text3:#a8a8a4;
+  --border:rgba(0,0,0,0.10);--border2:rgba(0,0,0,0.18);
+  --radius:10px;--radius-lg:14px;
+  --info:#185FA5;--info-bg:#E6F1FB;--info-text:#0C447C;
+  --danger-text:#a32d2d;
+  --morning-bg:#FFF3E0;--morning-text:#BF5900;
+  --lunch-bg:#E8F5E9;--lunch-text:#256029;
+  --dinner-bg:#EDE7F6;--dinner-text:#4527A0;
+}
+@media(prefers-color-scheme:dark){
+  :root{
+    --bg:#1e1e1c;--bg2:#2a2a27;--bg3:#232321;
+    --text:#e8e8e4;--text2:#9a9a96;--text3:#65655f;
+    --border:rgba(255,255,255,0.10);--border2:rgba(255,255,255,0.20);
+    --info:#378ADD;--info-bg:#0c2a44;--info-text:#85B7EB;
+    --morning-bg:#3a2500;--morning-text:#ffb347;
+    --lunch-bg:#0e2410;--lunch-text:#6fcf78;
+    --dinner-bg:#1e1440;--dinner-text:#b39ddb;
+  }
+}
+html{-webkit-text-size-adjust:100%}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI','Helvetica Neue',sans-serif;background:var(--bg3);color:var(--text);min-height:100vh;font-size:15px;line-height:1.6}
+a{color:var(--info)}
+
+/* ===== Layout ===== */
+.app{max-width:960px;margin:0 auto;padding:20px 16px;padding-bottom:40px}
+.app-header{margin-bottom:20px}
+.app-header h1{font-size:20px;font-weight:700;letter-spacing:-.02em}
+.app-header p{font-size:13px;color:var(--text2);margin-top:3px}
+
+/* ===== Tabs ===== */
+.tabs{display:flex;gap:0;margin-bottom:20px;border-bottom:0.5px solid var(--border)}
+.tab{flex:1;padding:12px 4px;font-size:14px;font-weight:500;border:none;background:transparent;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:color .15s,border-color .15s;font-family:inherit;text-align:center}
+.tab.active{color:var(--text);border-bottom-color:var(--text)}
+
+/* ===== Buttons ===== */
+.btn{padding:11px 18px;font-size:14px;font-weight:500;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);cursor:pointer;font-family:inherit;white-space:nowrap;transition:background .12s,opacity .12s;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.btn:active{opacity:.65}
+.btn.primary{background:var(--text);color:var(--bg);border-color:var(--text)}
+.btn.danger{color:var(--danger-text)}
+.btn.sm{padding:8px 14px;font-size:13px;min-height:36px}
+.btn.full{width:100%}
+
+/* ===== DB Toolbar ===== */
+.toolbar{display:flex;gap:8px;margin-bottom:14px;align-items:center;flex-wrap:wrap}
+.toolbar input,.toolbar select{font-size:14px;padding:10px 12px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit;min-height:44px}
+.toolbar input{flex:1;min-width:120px}
+.toolbar select{min-width:100px}
+
+/* ===== Recipe Cards (DB view on mobile) ===== */
+.recipe-list{display:flex;flex-direction:column;gap:8px}
+.recipe-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:14px 16px}
+.recipe-card-top{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:8px}
+.recipe-card-name{font-size:15px;font-weight:600;flex:1;min-width:0}
+.recipe-card-meta{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.recipe-card-kcal{font-size:13px;color:var(--text2)}
+.recipe-card-pfc{font-size:12px;color:var(--text3)}
+.recipe-card-actions{display:flex;gap:8px;margin-top:10px;padding-top:10px;border-top:0.5px solid var(--border)}
+.recipe-card-actions .btn{flex:1}
+
+/* ===== Table (desktop DB view) ===== */
+.table-wrap{overflow-x:auto;border-radius:var(--radius-lg);border:0.5px solid var(--border)}
+table{width:100%;border-collapse:collapse;font-size:13px;background:var(--bg)}
+thead th{padding:9px 12px;text-align:left;font-weight:500;font-size:12px;color:var(--text2);border-bottom:0.5px solid var(--border);white-space:nowrap;background:var(--bg2)}
+tbody tr{border-bottom:0.5px solid var(--border);transition:background .1s}
+tbody tr:last-child{border-bottom:none}
+tbody tr:hover{background:var(--bg2)}
+tbody td{padding:9px 12px;vertical-align:middle}
+.td-actions{display:flex;gap:6px;white-space:nowrap}
+
+/* ===== Badges ===== */
+.badge{display:inline-block;padding:3px 10px;border-radius:99px;font-size:11px;font-weight:600;white-space:nowrap}
+.badge.morning{background:var(--morning-bg);color:var(--morning-text)}
+.badge.lunch{background:var(--lunch-bg);color:var(--lunch-text)}
+.badge.dinner{background:var(--dinner-bg);color:var(--dinner-text)}
+.badge.any{background:var(--bg3);color:var(--text2)}
+
+/* ===== Planner header ===== */
+.planner-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px}
+.planner-header h2{font-size:16px;font-weight:700}
+
+/* ===== Day tabs (mobile planner navigation) ===== */
+.day-nav{display:none;gap:6px;overflow-x:auto;padding-bottom:4px;margin-bottom:16px;-webkit-overflow-scrolling:touch;scrollbar-width:none}
+.day-nav::-webkit-scrollbar{display:none}
+.day-btn{flex-shrink:0;padding:8px 16px;font-size:14px;font-weight:500;border:0.5px solid var(--border2);border-radius:99px;background:var(--bg);color:var(--text2);cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s;min-height:38px}
+.day-btn.active{background:var(--text);color:var(--bg);border-color:var(--text)}
+
+/* ===== Week grid (desktop) ===== */
+.week-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.day-col-desktop .day-header{text-align:center;font-size:12px;font-weight:600;color:var(--text2);padding:6px 0 8px;letter-spacing:.04em}
+
+/* ===== Day view (mobile planner) ===== */
+.day-view{display:none;flex-direction:column;gap:10px}
+
+/* ===== Meal cards ===== */
+.meal-card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px;margin-bottom:7px;transition:border-color .15s}
+.meal-label{font-size:10px;font-weight:700;letter-spacing:.07em;margin-bottom:5px;text-transform:uppercase}
+.meal-label.morning{color:var(--morning-text)}
+.meal-label.lunch{color:var(--lunch-text)}
+.meal-label.dinner{color:var(--dinner-text)}
+.meal-name{font-size:12px;font-weight:500;line-height:1.4;color:var(--text)}
+.meal-cal{font-size:11px;color:var(--text2);margin-top:4px}
+.meal-pfc{font-size:10px;color:var(--text3);margin-top:2px}
+.meal-link{font-size:11px;color:var(--info);display:inline-flex;align-items:center;gap:3px;margin-top:5px;text-decoration:none}
+.meal-link:hover{text-decoration:underline}
+.meal-empty{font-size:11px;color:var(--text3);text-align:center;padding:12px 0}
+
+/* Meal card — mobile large version */
+.meal-card-lg{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:16px}
+.meal-card-lg .meal-label{font-size:11px;font-weight:700;letter-spacing:.07em;margin-bottom:8px;text-transform:uppercase}
+.meal-card-lg .meal-name{font-size:16px;font-weight:600;line-height:1.4;color:var(--text)}
+.meal-card-lg .meal-cal{font-size:14px;color:var(--text2);margin-top:6px}
+.meal-card-lg .meal-pfc{font-size:12px;color:var(--text3);margin-top:4px}
+.meal-card-lg .meal-link{font-size:13px;margin-top:10px;padding:10px 0 0;border-top:0.5px solid var(--border);display:flex;align-items:center;gap:6px}
+.meal-card-lg .meal-empty{font-size:14px;padding:16px 0}
+
+/* ===== Summary ===== */
+.section-label{font-size:11px;font-weight:700;letter-spacing:.07em;color:var(--text3);margin:20px 0 10px;text-transform:uppercase}
+.summary-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:8px}
+.summary-card{background:var(--bg2);border-radius:var(--radius);padding:10px 12px;border:0.5px solid var(--border)}
+.summary-day{font-size:11px;font-weight:600;color:var(--text2);margin-bottom:7px;letter-spacing:.04em}
+.summary-kcal{font-size:18px;font-weight:700;color:var(--text);line-height:1}
+.summary-kcal span{font-size:11px;font-weight:400;color:var(--text2);margin-left:2px}
+.summary-divider{border:none;border-top:0.5px solid var(--border);margin:7px 0}
+.summary-row{display:flex;justify-content:space-between;font-size:11px;margin-bottom:3px;color:var(--text2)}
+.summary-row strong{font-weight:500;color:var(--text)}
+
+/* Summary — mobile single day */
+.summary-card-lg{background:var(--bg2);border-radius:var(--radius-lg);padding:16px;border:0.5px solid var(--border);margin-top:8px}
+.summary-card-lg .summary-kcal{font-size:28px;font-weight:700}
+.summary-card-lg .summary-kcal span{font-size:14px}
+.summary-card-lg .summary-row{font-size:14px;padding:4px 0}
+.summary-card-lg .summary-row strong{font-size:14px}
+.summary-card-lg .summary-divider{margin:10px 0}
+
+/* ===== Modal ===== */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.45);display:flex;align-items:flex-end;justify-content:center;z-index:100}
+@media(min-width:600px){.modal-bg{align-items:center;padding:16px}}
+.modal{background:var(--bg);border-radius:var(--radius-lg) var(--radius-lg) 0 0;padding:24px 20px;width:100%;max-height:90vh;overflow-y:auto;border-top:0.5px solid var(--border2)}
+@media(min-width:600px){
+  .modal{border-radius:var(--radius-lg);max-width:520px;border:0.5px solid var(--border2)}
+}
+.modal-handle{width:36px;height:4px;border-radius:2px;background:var(--border2);margin:0 auto 20px}
+.modal h3{font-size:17px;font-weight:700;margin-bottom:18px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:4px}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:13px;font-weight:500;color:var(--text2)}
+.form-group input,.form-group select{padding:11px 13px;font-size:15px;border:0.5px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:inherit;transition:border-color .12s;min-height:44px}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--text)}
+.modal-foot{display:flex;gap:8px;margin-top:20px}
+.modal-foot .btn{flex:1;min-height:48px;font-size:15px}
+
+/* ===== Empty ===== */
+.empty-state{text-align:center;padding:2.5rem 1rem;color:var(--text2);font-size:14px;background:var(--bg);border-radius:var(--radius-lg);border:0.5px solid var(--border)}
+
+/* ===== Mobile: switch layouts ===== */
+@media(max-width:680px){
+  /* planner: hide desktop grid, show day-nav + day-view */
+  .week-grid{display:none}
+  .summary-grid{display:none}
+  .day-nav{display:flex}
+  .day-view{display:flex}
+  /* DB: hide table, show card list */
+  .table-wrap{display:none}
+  .recipe-list{display:flex}
+  /* generate button full width */
+  .planner-header{flex-direction:column;align-items:stretch}
+  .planner-header h2{text-align:center}
+  .planner-header .btn{width:100%;min-height:50px;font-size:15px}
+}
+@media(min-width:681px){
+  /* desktop: hide mobile-only elements */
+  .day-nav{display:none!important}
+  .day-view{display:none!important}
+  .recipe-list{display:none!important}
+  .week-grid{display:grid}
+  .summary-grid{display:grid}
+  .table-wrap{display:block}
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="app-header">
+    <h1>🍽 週間献立プランナー</h1>
+    <p>レシピを登録して、月〜金の献立を自動生成できます</p>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" onclick="switchTab('planner')">献立カレンダー</button>
+    <button class="tab" onclick="switchTab('db')">レシピDB</button>
+  </div>
+
+  <!-- PLANNER TAB -->
+  <div id="tab-planner">
+    <div class="planner-header">
+      <h2>今週の献立（月〜金）</h2>
+      <button class="btn primary" onclick="generatePlan()">✦ 自動生成</button>
+    </div>
+    <!-- Mobile: day navigation pills -->
+    <div class="day-nav" id="day-nav"></div>
+    <!-- Mobile: single day view -->
+    <div class="day-view" id="day-view"></div>
+    <!-- Desktop: full week grid -->
+    <div id="week-grid" class="week-grid"></div>
+    <div class="section-label">1日の栄養サマリー</div>
+    <div id="summary-grid" class="summary-grid"></div>
+  </div>
+
+  <!-- DB TAB -->
+  <div id="tab-db" style="display:none">
+    <div class="toolbar">
+      <input type="text" id="search-input" placeholder="レシピ名で検索…" oninput="renderDB()">
+      <select id="filter-meal" onchange="renderDB()">
+        <option value="">すべての食事</option>
+        <option value="morning">朝食</option>
+        <option value="lunch">昼食</option>
+        <option value="dinner">夕食</option>
+        <option value="any">どれでも</option>
+      </select>
+      <button class="btn primary" onclick="openAddModal()">＋ 追加</button>
+    </div>
+    <div id="db-content"></div>
+  </div>
+</div>
+
+<!-- Modal -->
+<div id="modal" class="modal-bg" style="display:none" onclick="handleModalBgClick(event)">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-handle"></div>
+    <h3 id="modal-title">レシピを追加</h3>
+    <div class="form-grid">
+      <div class="form-group full">
+        <label>レシピ名 *</label>
+        <input type="text" id="f-name" placeholder="例：鮭の塩焼き定食">
+      </div>
+      <div class="form-group full">
+        <label>Instagram URL</label>
+        <input type="url" id="f-url" placeholder="https://www.instagram.com/p/…">
+      </div>
+      <div class="form-group">
+        <label>対象食事</label>
+        <select id="f-meal">
+          <option value="any">どれでも</option>
+          <option value="morning">朝食</option>
+          <option value="lunch">昼食</option>
+          <option value="dinner">夕食</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>カロリー (kcal)</label>
+        <input type="number" id="f-kcal" placeholder="例：450" min="0">
+      </div>
+      <div class="form-group">
+        <label>タンパク質 P (g)</label>
+        <input type="number" id="f-p" placeholder="例：25" min="0">
+      </div>
+      <div class="form-group">
+        <label>脂質 F (g)</label>
+        <input type="number" id="f-f" placeholder="例：12" min="0">
+      </div>
+      <div class="form-group">
+        <label>炭水化物 C (g)</label>
+        <input type="number" id="f-c" placeholder="例：60" min="0">
+      </div>
+    </div>
+    <div class="modal-foot">
+      <button class="btn" onclick="closeModal()">キャンセル</button>
+      <button class="btn primary" onclick="saveRecipe()">保存する</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const DAYS = ['月','火','水','木','金'];
+const MEALS = ['morning','lunch','dinner'];
+const MEAL_LABELS = {morning:'朝食',lunch:'昼食',dinner:'夕食',any:'どれでも'};
+const DB_KEY = 'mealplanner_db_v4';
+const PLAN_KEY = 'mealplanner_plan_v4';
+
+const DEFAULT_RECIPES = [
+  {id:2, name:'ピリ辛ネギ鶏',                      url:'https://www.instagram.com/reel/DCeOXbVRRMI/?hl=ja', meal:'any', kcal:153, p:23, f:3,  c:6},
+  {id:3, name:'至高の鶏ハム',                      url:'https://www.instagram.com/reel/DUvOlvcDyGU/?hl=ja', meal:'any', kcal:154, p:26, f:2,  c:5},
+  {id:4, name:'揚げないチキン南蛮',                url:'https://www.instagram.com/reel/DQZHMTTD1G5/?hl=ja', meal:'any', kcal:216, p:26, f:9,  c:5},
+  {id:5, name:'至高の鶏むねパエリア',              url:'https://www.instagram.com/reel/DVlKr0SFBoa/?hl=ja', meal:'any', kcal:462, p:31, f:6,  c:65},
+  {id:6, name:'太らないソーセージ',                url:'https://www.instagram.com/reel/DFSc50ovAsX/?hl=ja', meal:'any', kcal:150, p:26, f:3,  c:3},
+  {id:7, name:'鶏むね肉の生姜焼き',                url:'https://www.instagram.com/reel/DEzj7ruvsUE/?hl=ja', meal:'any', kcal:188, p:23, f:6,  c:8},
+  {id:8, name:'やみつきチキン（ケチャップカレー味）', url:'https://www.instagram.com/reel/DALTLZTOY9Z/?hl=ja', meal:'any', kcal:169, p:22, f:6,  c:6},
+  {id:9, name:'鶏むね肉の焼き鳥丼',               url:'https://www.instagram.com/reel/C2SG8IkSvl-/?hl=ja', meal:'any', kcal:455, p:25, f:5,  c:21},
+  {id:10,name:'鶏むね肉のオイマヨチキン',          url:'https://www.instagram.com/reel/CwC8bMttVOS/?hl=ja', meal:'any', kcal:202, p:23, f:9,  c:3},
+  {id:11,name:'鶏むね肉のオーロラソース和え',      url:'https://www.instagram.com/reel/CuRlX4Jp2Px/?hl=ja', meal:'any', kcal:168, p:22, f:6,  c:5},
+  {id:12,name:'鶏むね肉の味噌マヨチキン',          url:'https://www.instagram.com/reel/Ct_jrZAs_HX/?hl=ja', meal:'any', kcal:173, p:23, f:6,  c:4},
+  {id:13,name:'鶏むね肉のしそバター',              url:'https://www.instagram.com/reel/CuEtMNDPsYs/?hl=ja', meal:'any', kcal:148, p:22, f:4,  c:3},
+  {id:14,name:'鶏むね肉のハニーマスタード',        url:'https://www.instagram.com/reel/Ctq2rrUvnw8/?hl=ja', meal:'any', kcal:204, p:26, f:6,  c:9},
+  {id:15,name:'鶏チリ',                            url:'https://www.instagram.com/reel/CtlzqG2uoXn/?hl=ja', meal:'any', kcal:160, p:23, f:5,  c:4},
+  {id:16,name:'鶏むね肉のヤンニョムチキン',        url:'https://www.instagram.com/reel/CtOh3ukLXS3/?hl=ja', meal:'any', kcal:209, p:23, f:8,  c:10},
+  {id:17,name:'鶏むね肉の鉄つくね',               url:'https://www.instagram.com/reel/Cs3Wfqxr-Gn/?hl=ja', meal:'any', kcal:156, p:18, f:7,  c:5},
+  {id:18,name:'鶏むね肉チヂミ',                   url:'https://www.instagram.com/reel/CsbCgl7u_hd/?hl=ja', meal:'any', kcal:198, p:16, f:9,  c:12},
+];
+
+let db = [];
+let plan = {};
+let editingId = null;
+
+// Init
+function loadData() {
+  try {
+    const raw = localStorage.getItem(DB_KEY);
+    db = raw ? JSON.parse(raw) : DEFAULT_RECIPES.map(r=>({...r}));
+  } catch(e) { db = DEFAULT_RECIPES.map(r=>({...r})); }
+  try {
+    const raw2 = localStorage.getItem(PLAN_KEY);
+    plan = raw2 ? JSON.parse(raw2) : {};
+  } catch(e) { plan = {}; }
+}
+function persistDB() { try { localStorage.setItem(DB_KEY, JSON.stringify(db)); } catch(e){} }
+function persistPlan() { try { localStorage.setItem(PLAN_KEY, JSON.stringify(plan)); } catch(e){} }
+
+// Tabs
+function switchTab(name) {
+  document.getElementById('tab-planner').style.display = name==='planner' ? 'block' : 'none';
+  document.getElementById('tab-db').style.display = name==='db' ? 'block' : 'none';
+  document.querySelectorAll('.tab').forEach((t,i)=>{
+    t.classList.toggle('active', ['planner','db'][i]===name);
+  });
+  if(name==='db') renderDB();
+}
+
+// Generate plan
+function generatePlan() {
+  DAYS.forEach((_,di)=>{
+    MEALS.forEach(meal=>{
+      const pool = db.filter(r=>r.meal===meal||r.meal==='any');
+      if(!pool.length) return;
+      plan[`${di}_${meal}`] = pool[Math.floor(Math.random()*pool.length)].id;
+    });
+  });
+  persistPlan();
+  activeDayIndex = 0;
+  renderPlanner();
+}
+
+// Mobile day index
+let activeDayIndex = 0;
+
+// Render planner
+function renderPlanner() {
+  const grid = document.getElementById('week-grid');
+  const sumGrid = document.getElementById('summary-grid');
+  if(!grid) return;
+  grid.innerHTML = '';
+  sumGrid.innerHTML = '';
+
+  DAYS.forEach((d,di)=>{
+    const col = document.createElement('div');
+    col.innerHTML = `<div class="day-header">${d}曜日</div>`;
+
+    MEALS.forEach(meal=>{
+      const pid = plan[`${di}_${meal}`];
+      const rec = pid ? db.find(r=>r.id===pid) : null;
+      const card = document.createElement('div');
+      card.className = 'meal-card';
+      if(rec) {
+        const instaBadge = rec.url
+          ? `<a class="meal-link" href="${esc(rec.url)}" target="_blank" rel="noopener noreferrer">📷 投稿を見る</a>`
+          : '';
+        card.innerHTML = `
+          <div class="meal-label ${meal}">${MEAL_LABELS[meal]}</div>
+          <div class="meal-name">${esc(rec.name)}</div>
+          <div class="meal-cal">${rec.kcal} kcal</div>
+          <div class="meal-pfc">P ${rec.p}g ／ F ${rec.f}g ／ C ${rec.c}g</div>
+          ${instaBadge}
+        `;
+      } else {
+        card.innerHTML = `
+          <div class="meal-label ${meal}">${MEAL_LABELS[meal]}</div>
+          <div class="meal-empty">未設定</div>
+        `;
+      }
+      col.appendChild(card);
+    });
+    grid.appendChild(col);
+
+    // Summary (desktop)
+    const tot = {kcal:0,p:0,f:0,c:0};
+    MEALS.forEach(m=>{
+      const r = db.find(x=>x.id===plan[`${di}_${m}`]);
+      if(r){tot.kcal+=r.kcal;tot.p+=r.p;tot.f+=r.f;tot.c+=r.c;}
+    });
+    const sc = document.createElement('div');
+    sc.className = 'summary-card';
+    sc.innerHTML = `
+      <div class="summary-day">${d}曜日</div>
+      <div class="summary-kcal">${tot.kcal}<span>kcal</span></div>
+      <hr class="summary-divider">
+      <div class="summary-row"><span>タンパク質</span><strong>P ${tot.p}g</strong></div>
+      <div class="summary-row"><span>脂質</span><strong>F ${tot.f}g</strong></div>
+      <div class="summary-row"><span>炭水化物</span><strong>C ${tot.c}g</strong></div>
+    `;
+    sumGrid.appendChild(sc);
+  });
+
+  renderMobileDayView();
+}
+
+// Mobile: render day nav pills + selected day cards
+function renderMobileDayView() {
+  const nav = document.getElementById('day-nav');
+  const view = document.getElementById('day-view');
+  if(!nav || !view) return;
+
+  // Day nav pills
+  nav.innerHTML = DAYS.map((d,i)=>`
+    <button class="day-btn${i===activeDayIndex?' active':''}" onclick="selectDay(${i})">${d}曜日</button>
+  `).join('');
+
+  // Meal cards for active day
+  const di = activeDayIndex;
+  view.innerHTML = '';
+
+  MEALS.forEach(meal=>{
+    const pid = plan[`${di}_${meal}`];
+    const rec = pid ? db.find(r=>r.id===pid) : null;
+    const card = document.createElement('div');
+    card.className = 'meal-card-lg';
+    if(rec) {
+      const instaBadge = rec.url
+        ? `<a class="meal-link" href="${esc(rec.url)}" target="_blank" rel="noopener noreferrer">📷 Instagramで見る</a>`
+        : '';
+      card.innerHTML = `
+        <div class="meal-label ${meal}">${MEAL_LABELS[meal]}</div>
+        <div class="meal-name">${esc(rec.name)}</div>
+        <div class="meal-cal">${rec.kcal} kcal</div>
+        <div class="meal-pfc">タンパク質 ${rec.p}g ／ 脂質 ${rec.f}g ／ 炭水化物 ${rec.c}g</div>
+        ${instaBadge}
+      `;
+    } else {
+      card.innerHTML = `
+        <div class="meal-label ${meal}">${MEAL_LABELS[meal]}</div>
+        <div class="meal-empty">未設定</div>
+      `;
+    }
+    view.appendChild(card);
+  });
+
+  // Day summary card
+  const tot = {kcal:0,p:0,f:0,c:0};
+  MEALS.forEach(m=>{
+    const r = db.find(x=>x.id===plan[`${di}_${m}`]);
+    if(r){tot.kcal+=r.kcal;tot.p+=r.p;tot.f+=r.f;tot.c+=r.c;}
+  });
+  const sumLabel = document.createElement('div');
+  sumLabel.className = 'section-label';
+  sumLabel.textContent = '1日の栄養サマリー';
+  view.appendChild(sumLabel);
+
+  const sc = document.createElement('div');
+  sc.className = 'summary-card-lg';
+  sc.innerHTML = `
+    <div class="summary-kcal">${tot.kcal}<span>kcal</span></div>
+    <hr class="summary-divider">
+    <div class="summary-row"><span>タンパク質</span><strong>P ${tot.p}g</strong></div>
+    <div class="summary-row"><span>脂質</span><strong>F ${tot.f}g</strong></div>
+    <div class="summary-row"><span>炭水化物</span><strong>C ${tot.c}g</strong></div>
+  `;
+  view.appendChild(sc);
+}
+
+function selectDay(i) {
+  activeDayIndex = i;
+  renderMobileDayView();
+}
+
+// Render DB
+function renderDB() {
+  const q = (document.getElementById('search-input')||{value:''}).value.trim().toLowerCase();
+  const mf = (document.getElementById('filter-meal')||{value:''}).value;
+  const list = db.filter(r=>{
+    if(q && !r.name.toLowerCase().includes(q)) return false;
+    if(mf && r.meal!==mf) return false;
+    return true;
+  });
+  const el = document.getElementById('db-content');
+  if(!el) return;
+  if(!list.length){
+    el.innerHTML='<div class="empty-state">該当するレシピが見つかりません。<br>「＋ 追加」ボタンで登録してください。</div>';
+    return;
+  }
+  // Desktop: table
+  const tableHTML = `
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          <th>レシピ名</th><th>食事</th><th>Kcal</th><th>P</th><th>F</th><th>C</th><th>Instagram</th><th>操作</th>
+        </tr></thead>
+        <tbody>
+          ${list.map(r=>`
+            <tr>
+              <td style="font-weight:500">${esc(r.name)}</td>
+              <td><span class="badge ${r.meal}">${MEAL_LABELS[r.meal]}</span></td>
+              <td>${r.kcal}</td>
+              <td>${r.p}g</td>
+              <td>${r.f}g</td>
+              <td>${r.c}g</td>
+              <td>${r.url?`<a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" style="font-size:12px">リンク</a>`:'-'}</td>
+              <td><div class="td-actions">
+                <button class="btn sm" onclick="openEditModal(${r.id})">編集</button>
+                <button class="btn sm danger" onclick="deleteRecipe(${r.id})">削除</button>
+              </div></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:10px;text-align:right">${list.length}件</p>
+  `;
+  // Mobile: card list
+  const cardListHTML = `
+    <div class="recipe-list">
+      ${list.map(r=>`
+        <div class="recipe-card">
+          <div class="recipe-card-top">
+            <div class="recipe-card-name">${esc(r.name)}</div>
+            <span class="badge ${r.meal}">${MEAL_LABELS[r.meal]}</span>
+          </div>
+          <div class="recipe-card-meta">
+            <span class="recipe-card-kcal">${r.kcal} kcal</span>
+            <span class="recipe-card-pfc">P ${r.p}g ／ F ${r.f}g ／ C ${r.c}g</span>
+          </div>
+          ${r.url?`<div style="margin-top:8px"><a href="${esc(r.url)}" target="_blank" rel="noopener noreferrer" style="font-size:13px;color:var(--info)">📷 Instagramで見る</a></div>`:''}
+          <div class="recipe-card-actions">
+            <button class="btn sm" onclick="openEditModal(${r.id})">編集</button>
+            <button class="btn sm danger" onclick="deleteRecipe(${r.id})">削除</button>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <p style="font-size:12px;color:var(--text3);margin-top:10px;text-align:right">${list.length}件</p>
+  `;
+  el.innerHTML = tableHTML + cardListHTML;
+}
+
+// Modal
+function openAddModal() {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'レシピを追加';
+  ['name','url','kcal','p','f','c'].forEach(k=>(document.getElementById('f-'+k).value=''));
+  document.getElementById('f-meal').value = 'any';
+  document.getElementById('modal').style.display = 'flex';
+  setTimeout(()=>document.getElementById('f-name').focus(),50);
+}
+function openEditModal(id) {
+  const r = db.find(x=>x.id===id); if(!r) return;
+  editingId = id;
+  document.getElementById('modal-title').textContent = 'レシピを編集';
+  document.getElementById('f-name').value = r.name;
+  document.getElementById('f-url').value = r.url||'';
+  document.getElementById('f-meal').value = r.meal;
+  document.getElementById('f-kcal').value = r.kcal;
+  document.getElementById('f-p').value = r.p;
+  document.getElementById('f-f').value = r.f;
+  document.getElementById('f-c').value = r.c;
+  document.getElementById('modal').style.display = 'flex';
+}
+function closeModal() { document.getElementById('modal').style.display = 'none'; }
+function handleModalBgClick(e) { if(e.target===document.getElementById('modal')) closeModal(); }
+
+function saveRecipe() {
+  const name = document.getElementById('f-name').value.trim();
+  if(!name){ alert('レシピ名を入力してください。'); document.getElementById('f-name').focus(); return; }
+  const rec = {
+    name,
+    url: document.getElementById('f-url').value.trim(),
+    meal: document.getElementById('f-meal').value,
+    kcal: parseInt(document.getElementById('f-kcal').value)||0,
+    p: parseInt(document.getElementById('f-p').value)||0,
+    f: parseInt(document.getElementById('f-f').value)||0,
+    c: parseInt(document.getElementById('f-c').value)||0,
+  };
+  if(editingId) {
+    const idx = db.findIndex(x=>x.id===editingId);
+    if(idx>=0) db[idx] = {...db[idx], ...rec};
+  } else {
+    rec.id = Date.now();
+    db.push(rec);
+  }
+  persistDB();
+  renderDB();
+  renderPlanner();
+  closeModal();
+}
+
+function deleteRecipe(id) {
+  if(!confirm('このレシピを削除しますか？')) return;
+  db = db.filter(r=>r.id!==id);
+  Object.keys(plan).forEach(k=>{ if(plan[k]===id) delete plan[k]; });
+  persistDB(); persistPlan();
+  renderDB(); renderPlanner();
+}
+
+// Utils
+function esc(s){ const d=document.createElement('div');d.textContent=String(s);return d.innerHTML; }
+
+// Keyboard
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape') closeModal();
+});
+
+// Boot
+loadData();
+renderPlanner();
+</script>
+</body>
+</html>
